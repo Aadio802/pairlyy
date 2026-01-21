@@ -10,6 +10,7 @@ import asyncio
 from config import settings
 from pathlib import Path
 
+# ---- GLOBAL SINGLETON ----
 _db: aiosqlite.Connection | None = None
 _db_lock = asyncio.Lock()
 
@@ -29,13 +30,13 @@ async def get_db() -> aiosqlite.Connection:
 
             _db = await aiosqlite.connect(
                 settings.DATABASE_PATH,
-                isolation_level=None,
+                isolation_level=None,      # autocommit
                 check_same_thread=False,
             )
 
             _db.row_factory = aiosqlite.Row
 
-            # WAL mode
+            # WAL mode = concurrent reads
             await _db.execute("PRAGMA journal_mode=WAL")
             print("BOOT: WAL enabled")
 

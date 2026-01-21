@@ -1,44 +1,50 @@
 """
-SINGLE DATABASE ENTRY POINT
+SINGLE DATABASE ENTRY POINT (SAFE)
 This is the ONLY file that opens SQLite connections
 """
+
+print("BOOT: db.connection module loaded")
+
 import aiosqlite
+import asyncio
 from config import settings
 from pathlib import Path
 
+_db = None
+_db_lock = asyncio.Lock()
 
-async def get_db() -> aiosqlite.Connection:
-    """
-    Get database connection with WAL mode and foreign keys enabled.
-    
-    This is the ONLY function allowed to create database connections.
-    All other modules MUST use this function.
-    
-    Returns:
-        Async SQLite connection with:
-        - WAL mode enabled
-        - Foreign keys enabled
-        - Row factory set
-    """
-    conn = await aiosqlite.connect(settings.DATABASE_PATH)
-    conn.row_factory = aiosqlite.Row
-    
-    # Enable WAL mode for better concurrency
-    await conn.execute("PRAGMA journal_mode=WAL")
-    
-    # Enable foreign keys
-    await conn.execute("PRAGMA foreign_keys=ON")
-    
-    return conn
+
+async def get_db():
+    global _db
+
+    print("BOOT: get_db() called")
+
+    async with _db_lock:
+        if _db is None:
+            print("BOOT: creating SQLite connection")
+
+            _db = await aiosqlite.connect(
+                settings.DATABASE_PATH,
+                isolation_level=None,
+                check_same_thread=False,
+            )
+
+            _db.row_factory = aiosqlite.Row
+            await _db.execute("PRAGMA journal_mode=WAL")
+            await _db.execute("PRAGMA foreign_keys=ON")
+            await _db.execute("PRAGMA busy_timeout = 5000")
+
+        return _db
 
 
 async def init_database():
-    """Initialize database schema from schema.sql"""
+    print("BOOT: init_database() called")
+
     schema_path = Path(__file__).parent / "schema.sql"
-    
-    async with await get_db() as db:
-        with open(schema_path, 'r', encoding='utf-8') as f:
-            schema = f.read()
-        
-        await db.executescript(schema)
-        await db.commit()
+    db = await get_db()
+
+    with open(schema_path, "r", encoding="utf-8") as f:
+        schema = f.read()
+
+    await db.executescript(schema)
+    print("BOOT: database schema loaded")

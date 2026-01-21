@@ -37,12 +37,15 @@ async def get_db() -> aiosqlite.Connection:
 
             # WAL mode = concurrent reads
             await _db.execute("PRAGMA journal_mode=WAL")
+            print("BOOT: WAL enabled")
 
             # Foreign keys
             await _db.execute("PRAGMA foreign_keys=ON")
+            print("BOOT: foreign keys enabled")
 
-            # Busy timeout to avoid "database is locked"
+            # Busy timeout
             await _db.execute("PRAGMA busy_timeout = 5000")
+            print("BOOT: busy_timeout set")
 
         else:
             print("BOOT: reusing existing SQLite connection")
@@ -55,10 +58,12 @@ async def init_database():
     print("BOOT: init_database() called")
 
     schema_path = Path(__file__).parent / "schema.sql"
+    print("BOOT: loading schema from", schema_path)
 
     db = await get_db()
+
     with open(schema_path, "r", encoding="utf-8") as f:
         schema = f.read()
 
     await db.executescript(schema)
-    print("BOOT: database schema loaded")
+    print("BOOT: database schema loaded successfully")

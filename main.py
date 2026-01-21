@@ -35,7 +35,7 @@ async def get_db() -> aiosqlite.Connection:
 
             _db.row_factory = aiosqlite.Row
 
-            # WAL mode = concurrent reads
+            # WAL mode
             await _db.execute("PRAGMA journal_mode=WAL")
             print("BOOT: WAL enabled")
 

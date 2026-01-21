@@ -3,6 +3,8 @@ SINGLE DATABASE ENTRY POINT (SAFE)
 This is the ONLY file that opens SQLite connections
 """
 
+print("BOOT: db.connection module loaded")
+
 import aiosqlite
 import asyncio
 from config import settings
@@ -19,8 +21,12 @@ async def get_db() -> aiosqlite.Connection:
     """
     global _db
 
+    print("BOOT: get_db() called")
+
     async with _db_lock:
         if _db is None:
+            print("BOOT: creating new SQLite connection")
+
             _db = await aiosqlite.connect(
                 settings.DATABASE_PATH,
                 isolation_level=None,
@@ -38,11 +44,16 @@ async def get_db() -> aiosqlite.Connection:
             # Busy timeout to avoid "database is locked"
             await _db.execute("PRAGMA busy_timeout = 5000")
 
+        else:
+            print("BOOT: reusing existing SQLite connection")
+
         return _db
 
 
 async def init_database():
     """Initialize database schema from schema.sql"""
+    print("BOOT: init_database() called")
+
     schema_path = Path(__file__).parent / "schema.sql"
 
     db = await get_db()
@@ -50,3 +61,4 @@ async def init_database():
         schema = f.read()
 
     await db.executescript(schema)
+    print("BOOT: database schema loaded")
